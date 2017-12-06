@@ -100,7 +100,7 @@ class CombineFs(fuse.Operations):
         dirents = ['.', '..']
 
         for shard_cfg in self.config['shards']:
-            full_path = shard_cfg['path'] + '/' + path
+            full_path = shard_cfg['path'] + path
 
             if os.path.isdir(full_path):
                 filelist = os.listdir(full_path)
@@ -109,7 +109,10 @@ class CombineFs(fuse.Operations):
         dirents = list(set(dirents))
 
         for r in dirents:
-            yield r
+            # hide /.git folders from the raw ones
+            # meaning, we cannot have .git in the mount too
+            if path == '/' and r != '.git':
+                yield r
 
     def readlink(self, path):
         logging.info('readlink')
