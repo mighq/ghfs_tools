@@ -1,0 +1,13 @@
+log_level: DEBUG
+hash: sha256
+shards:
+  - path: ./shard1
+    range:
+    - 00
+    - 7f
+    capacity: 1073741824 # 1 GB
+  - path: ./shard2
+    range:
+    - 80
+    - ff
+    capacity: 536870912 # 512 MB
