@@ -1,0 +1,4 @@
+dnf install fuse-python fuse-encfs
+
+python filesystem.py -c config.yaml -m mnt
+encfs -vf mnt/ end/
