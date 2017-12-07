@@ -34,23 +34,27 @@ class CombineFs(fuse.Operations):
 
         return digest
 
-    def _sharded_path(self, partial):
-        obj_hash = self._hash_path(partial)
-
+    def _path_in_shard_range(self, path, range_cfg):
+        obj_hash = self._hash_path(path)
         hash_int = long(obj_hash, 16)
 
+        ldelim = long(str(range_cfg[0]).ljust(self.hash_size * 2, str(range_cfg[0])[-1]), 16)
+        if hash_int < ldelim:
+            return False
+
+        rdelim = long(str(range_cfg[1]).ljust(self.hash_size * 2, str(range_cfg[1])[-1]), 16)
+        if hash_int > rdelim:
+            return False
+
+        return True
+
+    def _sharded_path(self, partial):
         shard_prefix = None
+
         for shard_cfg in self.config['shards']:
-            ldelim = long(str(shard_cfg['range'][0]).ljust(self.hash_size * 2, str(shard_cfg['range'][0])[-1]), 16)
-            if hash_int < ldelim:
-                continue
-
-            rdelim = long(str(shard_cfg['range'][1]).ljust(self.hash_size * 2, str(shard_cfg['range'][1])[-1]), 16)
-            if hash_int > rdelim:
-                continue
-
-            logging.debug('choosing shard %s', str(shard_cfg))
-            shard_prefix = shard_cfg['path']
+            if self._path_in_shard_range(partial, shard_cfg['range']):
+                logging.debug('choosing shard %s', str(shard_cfg))
+                shard_prefix = shard_cfg['path']
 
         if shard_prefix is None:
             raise Exception('shard not found for the hash', obj_hash)
@@ -108,11 +112,15 @@ class CombineFs(fuse.Operations):
 
         dirents = list(set(dirents))
 
+        logging.debug('directory entries: %s', str(dirents))
+
         for r in dirents:
             # hide /.git folders from the raw ones
             # meaning, we cannot have .git in the mount too
-            if path == '/' and r != '.git':
-                yield r
+            if path == '/' and r == '.git':
+                continue
+
+            yield r
 
     def readlink(self, path):
         logging.info('readlink')
